@@ -1,5 +1,7 @@
-from flask import Flask
+from flask import Flask, request
 from requests import get, Response
+
+from utils import refill_response_content
 
 app = Flask(__name__)
 SITE_NAME = 'https://news.ycombinator.com/'
@@ -8,29 +10,15 @@ SITE_NAME = 'https://news.ycombinator.com/'
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def proxy(path: str):
-    r: Response = get(f'{SITE_NAME}{path}')
+    url_name: str = f'{SITE_NAME}{path}'
+    if request.query_string:
+        url_name += f'?{request.query_string.decode()}'
+    r: Response = get(url_name)
     if '.' not in r.url.split('/')[-1]:
-        new_text: str = ''
-        current_word: str = ''
-        tag_opened: bool = False
-        for i in r.text:
-            if len(current_word) == 6 and not i.isalpha():
-                new_text += '&trade;'
-            if i == '<':
-                tag_opened = True
-                current_word = ''
-            elif i == '>':
-                tag_opened = False
-            elif tag_opened:
-                pass
-            elif i.isalpha():
-                current_word += i
-            else:
-                current_word = ''
-
-            new_text += i
-        r._content = bytes(new_text, 'utf-8')
-    return r.content
+        new_text = refill_response_content(resp=r)
+        protocol: str = request.url.split('://')[0]
+        r._content = bytes(new_text.replace(f'href="{SITE_NAME[:-1]}', f'href="{protocol}://{request.host}'), 'utf-8')
+    return r.content, r.status_code
 
 
 if __name__ == '__main__':
