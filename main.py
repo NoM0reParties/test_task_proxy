@@ -6,7 +6,6 @@ from utils import refill_response_content
 app = Flask(__name__)
 SITE_NAME = 'https://news.ycombinator.com/'
 
-
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def proxy(path: str):
